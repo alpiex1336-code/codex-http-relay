@@ -1,0 +1,12 @@
+node_modules/
+.DS_Store
+*.log
+*.sqlite*
+*.db*
+.env
+.env.*
+coverage/
+.runtime/
+*.bak
+auth.json
+install-state.json
