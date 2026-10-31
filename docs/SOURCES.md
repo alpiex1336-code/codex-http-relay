@@ -15,6 +15,7 @@
 | [vekil 原作者文件](https://github.com/sozercan/vekil/blob/main/docs/responses-websocket.md) | 426 fallback 模式的另一個實作例；本工具沒有複製或安裝該專案 |
 | [Node.js HTTP](https://nodejs.org/api/http.html) / [HTTPS](https://nodejs.org/api/https.html) | 標準串流、headers、TLS client |
 | [Microsoft ScheduledTasks](https://learn.microsoft.com/en-us/powershell/module/scheduledtasks/register-scheduledtask) | Windows 使用者排程工作機制；文件不能代替實機測試 |
+| [PowerShell #27774](https://github.com/PowerShell/PowerShell/issues/27774) | PowerShell 7 經中介程序啟動 Windows PowerShell 5.1 時，繼承的 module path 可能載入錯誤版本；本工具只隔離自己子程序的 system module path |
 
 相依套件：[`smol-toml` 1.9.1](https://github.com/squirrelchat/smol-toml)，BSD-3-Clause，精確版本與 registry integrity 位於 `package-lock.json`。僅管理工具解析 TOML 使用；常駐 relay 不載入此套件。執行 `npm ci --ignore-scripts`，不執行套件安裝 scripts。
 

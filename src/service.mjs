@@ -2,21 +2,26 @@ import {mkdir,readFile,writeFile,unlink,lstat} from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import {run} from './process.mjs';
+import {runPowerShell} from './windows.mjs';
 import {health} from './codex.mjs';
 
 const xml = value => String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&apos;');
 export const psQuote = value => "'"+String(value).replaceAll("'","''")+"'";
-const psArgs = script => ['-NoProfile','-NonInteractive','-Command',script];
 async function checked(exe,args) {
   const r=await run(exe,args);
   if(r.code!==0||r.timedOut) throw new Error('User service operation failed. Check local OS service policy; no elevation was attempted.');
   return r;
 }
+async function checkedPowerShell(script) {
+  const result=await runPowerShell(script);
+  if(result.code!==0||result.timedOut) throw new Error('User service operation failed. Check local OS service policy; no elevation was attempted.');
+  return result;
+}
 export async function privateDirectory(dir) {
   await mkdir(dir,{recursive:true,mode:0o700});
   if(!(await lstat(dir)).isDirectory()) throw new Error('Runtime path must be a real directory.');
   if(process.platform==='win32') {
-    await checked('powershell.exe',psArgs(windowsPrivateDirectoryScript(dir)));
+    await checkedPowerShell(windowsPrivateDirectoryScript(dir));
   }
 }
 export function windowsPrivateDirectoryScript(dir) {
@@ -57,7 +62,7 @@ export async function ensureServiceAbsent(state) {
     const check=await run('/bin/launchctl',['print',`gui/${process.getuid()}/${state.serviceName}`]);
     if(check.code===0) throw new Error('A service with this name is already loaded.');
   } else if(state.platform==='win32') {
-    await checked('powershell.exe',psArgs(`$ErrorActionPreference='Stop'; if(Get-ScheduledTask -TaskName ${psQuote(state.serviceName)} -ErrorAction SilentlyContinue){exit 2}`));
+    await checkedPowerShell(`$ErrorActionPreference='Stop'; if(Get-ScheduledTask -TaskName ${psQuote(state.serviceName)} -ErrorAction SilentlyContinue){exit 2}`);
   } else throw new Error('Automatic installation supports macOS and Windows only.');
 }
 
@@ -70,7 +75,7 @@ export async function installService(state) {
     await checked('/bin/launchctl',['bootstrap',`gui/${process.getuid()}`,plist]);
   } else {
     await writeFile(path.join(state.runtime,'run-relay.ps1'),windowsRunner(state),{flag:'wx',mode:0o600});
-    await checked('powershell.exe',psArgs(windowsInstallScript(state)));
+    await checkedPowerShell(windowsInstallScript(state));
   }
 }
 
@@ -95,7 +100,7 @@ export async function removeService(state) {
   } else if(state.platform==='win32') {
     const expectedArguments=`-NoProfile -NonInteractive -WindowStyle Hidden -File "${path.join(state.runtime,'run-relay.ps1')}"`;
     const script=`$ErrorActionPreference='Stop'; $name=${psQuote(state.serviceName)}; $t=Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue; if($null -ne $t){if($t.Description -ne ${psQuote('codex-http-relay '+state.id)} -or @($t.Actions).Count -ne 1 -or $t.Actions[0].Execute -ne (Join-Path $PSHOME 'powershell.exe') -or $t.Actions[0].Arguments -ne ${psQuote(expectedArguments)}){throw 'Ownership mismatch'}; Stop-ScheduledTask -TaskName $name; Unregister-ScheduledTask -TaskName $name -Confirm:$false}`;
-    await checked('powershell.exe',psArgs(script));
+    await checkedPowerShell(script);
   }
 }
 

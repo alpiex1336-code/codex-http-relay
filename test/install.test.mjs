@@ -65,6 +65,13 @@ test('unrelated settings added during failed smoke survive automatic rollback',a
 test('live tests cannot be skipped on setup',async t=>{
   const f=await fixture(t);await assert.rejects(install({},f.deps),/--live/);assert.equal(f.started(),false);
 });
+test('runtime permission failure leaves no empty installation or config mutation',async t=>{
+  const f=await fixture(t);f.deps.privateDirectory=async()=>{throw new Error('permission fixture');};
+  await assert.rejects(install({live:true},f.deps),/permission fixture/);
+  assert.equal(await readFile(f.p.configFile,'utf8'),f.original);assert.equal(f.started(),false);
+  await assert.rejects(readFile(f.p.stateFile),{code:'ENOENT'});
+  await mkdir(f.p.runtime); // An unsuccessful attempt must not block the next install.
+});
 test('service rendering preserves spaces and escapes command/XML injection',()=>{
   const state={serviceName:'local.test',node:'/fixture/Node & Co/node',runtime:"/fixture/O'Brien & Co",port:18888,id:'00000000-0000-4000-8000-000000000001'};
   assert.equal(psQuote("a'b"),"'a''b'");assert.match(launchPlist(state),/Node &amp; Co/);assert.match(launchPlist(state),/O&apos;Brien/);

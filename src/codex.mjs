@@ -4,6 +4,7 @@ import os from 'node:os';
 import http from 'node:http';
 import {randomUUID} from 'node:crypto';
 import {run,Rpc} from './process.mjs';
+import {runPowerShell} from './windows.mjs';
 import {createRelay} from './relay.mjs';
 
 export async function discoverBinary(explicit, platform=process.platform) {
@@ -30,7 +31,7 @@ export async function discoverBinary(explicit, platform=process.platform) {
   } else if(platform==='win32') {
     // Read only processes that are already running; do not substitute a PATH CLI.
     const script="$p=@(Get-CimInstance Win32_Process -Filter \"Name='codex.exe'\" | Where-Object { $_.CommandLine -match 'app-server' } | Select-Object -ExpandProperty ExecutablePath -Unique); ConvertTo-Json -InputObject $p -Compress";
-    const result=await run('powershell.exe',['-NoProfile','-NonInteractive','-Command',script]);
+    const result=await runPowerShell(script);
     if(result.code===0) {
       const values=JSON.parse(result.stdout.trim()||'[]');
       for(const file of Array.isArray(values)?values:[values]) if(file) candidates.add(file);

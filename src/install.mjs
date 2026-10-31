@@ -1,4 +1,4 @@
-import {readFile,writeFile,mkdir,lstat,unlink,rename} from 'node:fs/promises';
+import {readFile,writeFile,mkdir,lstat,unlink,rename,rmdir} from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import net from 'node:net';
@@ -68,7 +68,7 @@ async function freePort() {
 
 // Dependency injection only for offline tests; executable always uses real checks/services.
 export async function install(options={},deps={}) {
-  const ops={doctor,preflight,inspectCodex,smoke,ensureServiceAbsent,installService,removeService,waitHealthy,...deps};
+  const ops={doctor,preflight,inspectCodex,smoke,ensureServiceAbsent,installService,removeService,waitHealthy,privateDirectory,...deps};
   const checked=await ops.doctor(options);
   if(!checked.applicable) throw new Error(checked.reason);
   const {p,binary,version,current,inspection}=checked;
@@ -81,7 +81,8 @@ export async function install(options={},deps={}) {
   // A concurrent or unfinished installation must never be adopted or overwritten.
   await mkdir(path.dirname(p.runtime),{recursive:true,mode:0o700});
   await mkdir(p.runtime,{mode:0o700});
-  await privateDirectory(p.runtime);
+  try {await ops.privateDirectory(p.runtime);}
+  catch(error) {await rmdir(p.runtime).catch(()=>{});throw error;}
   let configWritten=false;
   try {
     await writeFile(path.join(p.runtime,'config.original.toml'),current.text,{flag:'wx',mode:0o600});
