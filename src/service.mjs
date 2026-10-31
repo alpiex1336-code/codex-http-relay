@@ -16,9 +16,11 @@ export async function privateDirectory(dir) {
   await mkdir(dir,{recursive:true,mode:0o700});
   if(!(await lstat(dir)).isDirectory()) throw new Error('Runtime path must be a real directory.');
   if(process.platform==='win32') {
-    const script=`$ErrorActionPreference='Stop'; $p=${psQuote(dir)}; $sid=[System.Security.Principal.WindowsIdentity]::GetCurrent().User; $acl=New-Object System.Security.AccessControl.DirectorySecurity; $acl.SetAccessRuleProtection($true,$false); foreach($who in @($sid,(New-Object System.Security.Principal.SecurityIdentifier('S-1-5-18')))){ $rule=New-Object System.Security.AccessControl.FileSystemAccessRule($who,'FullControl','ContainerInherit,ObjectInherit','None','Allow'); $acl.AddAccessRule($rule) }; Set-Acl -LiteralPath $p -AclObject $acl`;
-    await checked('powershell.exe',psArgs(script));
+    await checked('powershell.exe',psArgs(windowsPrivateDirectoryScript(dir)));
   }
+}
+export function windowsPrivateDirectoryScript(dir) {
+  return `$ErrorActionPreference='Stop'; $p=${psQuote(dir)}; $sid=[System.Security.Principal.WindowsIdentity]::GetCurrent().User; $acl=New-Object System.Security.AccessControl.DirectorySecurity; $acl.SetAccessRuleProtection($true,$false); foreach($who in @($sid,(New-Object System.Security.Principal.SecurityIdentifier('S-1-5-18')))){ $rule=New-Object System.Security.AccessControl.FileSystemAccessRule($who,'FullControl','ContainerInherit,ObjectInherit','None','Allow'); $acl.AddAccessRule($rule) }; Set-Acl -LiteralPath $p -AclObject $acl`;
 }
 
 export function launchPlist(state) {
